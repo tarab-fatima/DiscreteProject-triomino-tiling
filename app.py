@@ -15,8 +15,8 @@ st.markdown("""
     
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        
-        border-right: 1px solid #D7CCC8;
+        background-color: #FDF5E6 !important;
+        border-right: 1px solid #735240;
     }
     
     /* Typography */
@@ -153,4 +153,5 @@ if start_btn:
     solve_recursive(main_board, 0, 0, m_row, m_col, size, board_ui, stat_ui, [0])
     st.snow()
     stat_ui.write("✨ **Harmony Restored.**")
+
 
