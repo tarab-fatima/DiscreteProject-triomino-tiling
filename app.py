@@ -4,121 +4,89 @@ import matplotlib.pyplot as plt
 import time
 
 # --- Page Config ---
-st.set_page_config(page_title="Triomino Tiling Visualizer", layout="wide")
+st.set_page_config(page_title="Triomino Tiling Solver", layout="wide")
 
 st.title("🧩 Defective Checkerboard Tiling")
-st.markdown("This project uses **Mathematical Induction** to tile a board with a missing square.")
+st.write("Solving $2^n \\times 2^n$ boards using Recursive Induction.")
 
 # --- Sidebar ---
 with st.sidebar:
-    st.header("Project Settings")
-    n = st.slider("Select n (Size = 2^n)", 1, 6, 3)
+    st.header("Configuration")
+    n = st.slider("Select n (Size $2^n$)", 1, 6, 3)
     size = 2**n
     
-    st.subheader("Missing Square Location")
-    m_row = st.number_input("Row index", 0, size-1, 0)
-    m_col = st.number_input("Column index", 0, size-1, 0)
+    st.subheader("Missing Square")
+    m_row = st.number_input("Row (0 to size-1)", 0, size-1, 0)
+    m_col = st.number_input("Col (0 to size-1)", 0, size-1, 0)
     
-    speed = st.select_slider("Animation Speed", options=[0.5, 0.1, 0.05, 0.01, 0.0], value=0.1)
+    speed = st.select_slider("Speed", options=[0.5, 0.1, 0.05, 0.01, 0.0], value=0.1)
     
-    start_btn = st.button("🚀 Start Recursive Tiling", use_container_width=True)
-    
-    if st.button("🔄 Reset Everything", use_container_width=True):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
+    start_btn = st.button("🚀 Start Tiling", use_container_width=True)
 
-# --- Initialize State ---
-if 'board' not in st.session_state or st.session_state.get('last_n') != n:
-    st.session_state.board = np.zeros((size, size))
-    st.session_state.board[m_row, m_col] = -1
-    st.session_state.counter = 0
-    st.session_state.last_n = n
-
-# --- Helper: Render the Board ---
-def render_board(b, sz):
-    fig, ax = plt.subplots(figsize=(8, 8)) 
-    # vmin/vmax ensures the colormap doesn't crash even if board is empty
-    current_max = max(1, int(b.max()))
-    
-    # Modern matplotlib colormap access
-    im = ax.imshow(b, cmap='tab20b', vmin=-1, vmax=current_max)
-    
-    if sz <= 16:
-        ax.set_xticks(np.arange(-.5, sz, 1), minor=True)
-        ax.set_yticks(np.arange(-.5, sz, 1), minor=True)
-        ax.grid(which='minor', color='white', linestyle='-', linewidth=1)
-    
-    ax.set_xticks([])
-    ax.set_yticks([])
-    return fig
-
-# --- The Algorithm ---
-def solve(top, left, m_r, m_c, sz, placeholder, log_placeholder):
+# --- The Core Algorithm ---
+def solve_recursive(board, top, left, m_r, m_c, sz, plot_handle, status_handle, current_count):
     if sz == 1:
-        return
+        return current_count
     
-    st.session_state.counter += 1
-    count = st.session_state.counter
+    current_count[0] += 1
+    count = current_count[0]
     half = sz // 2
     mid_r, mid_c = top + half, left + half
 
-    # 1. Place the L-triomino at the center
-    # Top Left quadrant
-    if not (m_r < mid_r and m_c < mid_c):
-        st.session_state.board[mid_r-1, mid_c-1] = count
-    # Top Right quadrant
-    if not (m_r < mid_r and m_c >= mid_c):
-        st.session_state.board[mid_r-1, mid_c] = count
-    # Bottom Left quadrant
-    if not (m_r >= mid_r and m_c < mid_c):
-        st.session_state.board[mid_r, mid_c-1] = count
-    # Bottom Right quadrant
-    if not (m_r >= mid_r and m_c >= mid_c):
-        st.session_state.board[mid_r, mid_c] = count
+    # Placement Logic
+    if not (m_r < mid_r and m_c < mid_c): board[mid_r-1, mid_c-1] = count
+    if not (m_r < mid_r and m_c >= mid_c): board[mid_r-1, mid_c] = count
+    if not (m_r >= mid_r and m_c < mid_c): board[mid_r, mid_c-1] = count
+    if not (m_r >= mid_r and m_c >= mid_c): board[mid_r, mid_c] = count
 
-    # 2. Update UI and prevent Memory Leak
-    fig = render_board(st.session_state.board, size)
-    placeholder.pyplot(fig)
-    plt.close(fig) 
+    # Visual Update
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.imshow(board, cmap='tab20b', vmin=-1, vmax=max(1, np.max(board)))
+    ax.set_xticks([]); ax.set_yticks([])
+    plot_handle.pyplot(fig)
+    plt.close(fig) # Prevent memory warning
     
-    log_placeholder.info(f"Step {count}: Tiling {sz}x{sz} section")
-    if speed > 0:
-        time.sleep(speed)
+    status_handle.info(f"Placing Triomino #{count} (Grid size: {sz}x{sz})")
+    if speed > 0: time.sleep(speed)
 
-    # 3. Recurse for each quadrant
-    solve(top, left, (m_r if (m_r < mid_r and m_c < mid_c) else mid_r-1), 
-          (m_c if (m_r < mid_r and m_c < mid_c) else mid_c-1), half, placeholder, log_placeholder)
-    solve(top, mid_c, (m_r if (m_r < mid_r and m_c >= mid_c) else mid_r-1), 
-          (m_c if (m_r < mid_r and m_c >= mid_c) else mid_c), half, placeholder, log_placeholder)
-    solve(mid_r, left, (m_r if (m_r >= mid_r and m_c < mid_c) else mid_r), 
-          (m_c if (m_r >= mid_r and m_c < mid_c) else mid_c-1), half, placeholder, log_placeholder)
-    solve(mid_r, mid_c, (m_r if (m_r >= mid_r and m_c >= mid_c) else mid_r), 
-          (m_c if (m_r >= mid_r and m_c >= mid_c) else mid_c), half, placeholder, log_placeholder)
+    # Recursive Calls
+    # Top Left
+    solve_recursive(board, top, left, (m_r if (m_r < mid_r and m_c < mid_c) else mid_r-1), 
+                    (m_c if (m_r < mid_r and m_c < mid_c) else mid_c-1), half, plot_handle, status_handle, current_count)
+    # Top Right
+    solve_recursive(board, top, mid_c, (m_r if (m_r < mid_r and m_c >= mid_c) else mid_r-1), 
+                    (m_c if (m_r < mid_r and m_c >= mid_c) else mid_c), half, plot_handle, status_handle, current_count)
+    # Bottom Left
+    solve_recursive(board, mid_r, left, (m_r if (m_r >= mid_r and m_c < mid_c) else mid_r), 
+                    (m_c if (m_r >= mid_r and m_c < mid_c) else mid_c-1), half, plot_handle, status_handle, current_count)
+    # Bottom Right
+    solve_recursive(board, mid_r, mid_c, (m_r if (m_r >= mid_r and m_c >= mid_c) else mid_r), 
+                    (m_c if (m_r >= mid_r and m_c >= mid_c) else mid_c), half, plot_handle, status_handle, current_count)
 
 # --- Main Layout ---
 col1, col2 = st.columns([2, 1])
-
 with col1:
-    board_plot = st.empty()
-    # Initial render
-    f = render_board(st.session_state.board, size)
-    board_plot.pyplot(f)
-    plt.close(f)
+    board_display = st.empty()
+    # Create a fresh temporary board just for display
+    temp_board = np.zeros((size, size))
+    temp_board[m_row, m_col] = -1
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.imshow(temp_board, cmap='binary', vmin=-1, vmax=0)
+    ax.set_xticks([]); ax.set_yticks([])
+    board_display.pyplot(fig)
+    plt.close(fig)
 
 with col2:
-    status_box = st.empty()
-    status_box.write("Click the button to start the recursion.")
-    
-    if st.session_state.counter > 0:
-        st.metric("Total Triominoes", st.session_state.counter)
+    status_display = st.empty()
+    status_display.write("Configure settings and press Start.")
 
 if start_btn:
-    st.session_state.counter = 0
-    # Clear board before starting a new run
-    st.session_state.board = np.zeros((size, size))
-    st.session_state.board[m_row, m_col] = -1
+    # 1. Start with a fresh board of the current size
+    final_board = np.zeros((size, size))
+    final_board[m_row, m_col] = -1
     
-    solve(0, 0, m_row, m_col, size, board_plot, status_box)
+    # 2. Run the solver
+    solve_recursive(final_board, 0, 0, m_row, m_col, size, board_display, status_display, [0])
+    
     st.balloons()
-    status_box.success("Board fully tiled!")
+    status_display.success("Tiling Completed Successfully!")
