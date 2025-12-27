@@ -3,43 +3,64 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-# Page Config
-st.set_page_config(page_title="Tiling Visualizer", layout="centered")
+# --- Page Config ---
+st.set_page_config(page_title="Triomino Tiling Visualizer", layout="wide")
 
 st.title("🧩 Defective Checkerboard Tiling")
-st.markdown("""
-This project demonstrates **Mathematical Induction**. A $2^n \\times 2^n$ board with one missing square 
-can always be tiled using $L$-shaped triominoes.
-""")
+st.markdown("This interactive tool uses **Divide and Conquer** to solve the defective checkerboard problem.")
 
-# Sidebar Inputs
+# --- Sidebar Inputs ---
 with st.sidebar:
-    st.header("Settings")
-    n = st.slider("Power of 2 (n)", 1, 6, 3)
+    st.header("Project Settings")
+    n = st.slider("Select n (Size = 2^n)", 1, 6, 3)
     size = 2**n
-    st.write(f"Board: {size}x{size}")
     
-    m_row = st.number_input("Missing Row", 0, size-1, 0)
-    m_col = st.number_input("Missing Col", 0, size-1, 0)
+    st.subheader("Missing Square Location")
+    m_row = st.number_input("Row index", 0, size-1, 0)
+    m_col = st.number_input("Column index", 0, size-1, 0)
     
-    speed = st.slider("Animation Speed", 0.0, 1.0, 0.2)
-    start_btn = st.button("🚀 Start Tiling")
+    speed = st.select_slider("Animation Speed", options=[0.5, 0.2, 0.1, 0.05, 0.01], value=0.1)
+    
+    start_btn = st.button("🚀 Start Recursive Tiling", use_container_width=True)
+    reset_btn = st.button("🔄 Reset Board", use_container_width=True)
 
-# Initialize Board
-if 'board' not in st.session_state or st.sidebar.button("Reset"):
+# --- State Management ---
+if 'board' not in st.session_state or reset_btn:
     st.session_state.board = np.zeros((size, size))
     st.session_state.board[m_row, m_col] = -1
     st.session_state.counter = 0
 
-def solve(top, left, m_r, m_c, sz):
-    if sz == 1: return
+# --- Helper: Render the Board ---
+def render_board(b, sz):
+    fig, ax = plt.subplots(figsize=(7, 7))
+    # Using 'prism' or 'tab20' for vibrant triomino colors
+    # We set vmin=-1 and vmax to at least 1 to avoid the ValueError
+    max_val = max(1, int(b.max()))
+    im = ax.imshow(b, cmap='tab20', vmin=-1, vmax=max_val)
+    
+    # Draw Grid
+    ax.set_xticks(np.arange(-.5, sz, 1), minor=True)
+    ax.set_yticks(np.arange(-.5, sz, 1), minor=True)
+    ax.grid(which='minor', color='white', linestyle='-', linewidth=1)
+    
+    # Clean up labels
+    ax.set_xticks([])
+    ax.set_yticks([])
+    return fig
+
+# --- The Algorithm ---
+def solve(top, left, m_r, m_c, sz, placeholder, log_placeholder):
+    if sz == 1:
+        return
     
     st.session_state.counter += 1
     count = st.session_state.counter
     half = sz // 2
     mid_r, mid_c = top + half, left + half
 
-    # Quadrant Logic & Center Triomino Placement
+    # Quadrant Logic: Place center triomino pieces
+    # If the missing square is NOT in a quadrant, place a piece in that quadrant's corner at the center
+    
     # Top Left
     if not (m_r < mid_r and m_c < mid_c):
         st.session_state.board[mid_r-1, mid_c-1] = count
@@ -53,29 +74,45 @@ def solve(top, left, m_r, m_c, sz):
     if not (m_r >= mid_r and m_c >= mid_c):
         st.session_state.board[mid_r, mid_c] = count
 
-    # Show progress in UI
+    # Update UI
     placeholder.pyplot(render_board(st.session_state.board, size))
+    log_placeholder.write(f"Placed Triomino #{count} at center of {sz}x{sz} block.")
     time.sleep(speed)
 
-    # Recursive calls
-    solve(top, left, (m_r if m_r < mid_r and m_c < mid_c else mid_r-1), (m_c if m_r < mid_r and m_c < mid_c else mid_c-1), half)
-    solve(top, mid_c, (m_r if m_r < mid_r and m_c >= mid_c else mid_r-1), (m_c if m_r < mid_r and m_c >= mid_c else mid_c), half)
-    solve(mid_r, left, (m_r if m_r >= mid_r and m_c < mid_c else mid_r), (m_c if m_r >= mid_r and m_c < mid_c else mid_c-1), half)
-    solve(mid_r, mid_c, (m_r if m_r >= mid_r and m_c >= mid_c else mid_r), (m_c if m_r >= mid_r and m_c >= mid_c else mid_c), half)
+    # Recurse for each quadrant
+    # 1. Top Left
+    new_m_r = m_r if (m_r < mid_r and m_c < mid_c) else mid_r-1
+    new_m_c = m_c if (m_r < mid_r and m_c < mid_c) else mid_c-1
+    solve(top, left, new_m_r, new_m_c, half, placeholder, log_placeholder)
+    
+    # 2. Top Right
+    new_m_r = m_r if (m_r < mid_r and m_c >= mid_c) else mid_r-1
+    new_m_c = m_c if (m_r < mid_r and m_c >= mid_c) else mid_c
+    solve(top, mid_c, new_m_r, new_m_c, half, placeholder, log_placeholder)
+    
+    # 3. Bottom Left
+    new_m_r = m_r if (m_r >= mid_r and m_c < mid_c) else mid_r
+    new_m_c = m_c if (m_r >= mid_r and m_c < mid_c) else mid_c-1
+    solve(mid_r, left, new_m_r, new_m_c, half, placeholder, log_placeholder)
+    
+    # 4. Bottom Right
+    new_m_r = m_r if (m_r >= mid_r and m_c >= mid_c) else mid_r
+    new_m_c = m_c if (m_r >= mid_r and m_c >= mid_c) else mid_c
+    solve(mid_r, mid_c, new_m_r, new_m_c, half, placeholder, log_placeholder)
 
-def render_board(b, sz):
-    fig, ax = plt.subplots(figsize=(6, 6))
-    cmap = plt.cm.get_cmap('viridis', int(b.max() + 2))
-    cmap.set_under("black")
-    ax.imshow(b, cmap=cmap, vmin=0.1)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    return fig
+# --- Layout ---
+col1, col2 = st.columns([2, 1])
 
-placeholder = st.empty()
-placeholder.pyplot(render_board(st.session_state.board, size))
+with col1:
+    board_plot = st.empty()
+    board_plot.pyplot(render_board(st.session_state.board, size))
+
+with col2:
+    st.subheader("Process Log")
+    log_info = st.empty()
+    log_info.write("Waiting to start...")
 
 if start_btn:
-    solve(0, 0, m_row, m_col, size)
+    solve(0, 0, m_row, m_col, size, board_plot, log_info)
     st.balloons()
-    st.success("Tiling Complete!")
+    st.success(f"Finished! Total Triominoes: {st.session_state.counter}")
