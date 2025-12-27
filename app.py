@@ -28,12 +28,13 @@ st.markdown("""
     /* Buttons */
     div.stButton > button {
         background-color: white; color: #FDF5E6;
-        border-right: 2px ridge #735240;
+        border: 2px ridge #735240;
         border-radius: 4px; border: none; height: 3em; width: 100%;
         transition: 0.3s;
     }
     div.stButton > button:hover {
-        background-color: #735240; color: white;
+        border: 2px ridge white;
+        background-color: #735240; color: white  !important;
     }
     
     /* Inputs */
@@ -154,6 +155,7 @@ if start_btn:
     solve_recursive(main_board, 0, 0, m_row, m_col, size, board_ui, stat_ui, [0])
     st.snow()
     stat_ui.write("✨ **Harmony Restored.**")
+
 
 
 
