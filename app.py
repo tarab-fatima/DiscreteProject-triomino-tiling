@@ -15,7 +15,7 @@ st.markdown("""
     
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background-color: #EFEBE9 !important;
+        
         border-right: 1px solid #D7CCC8;
     }
     
@@ -51,7 +51,7 @@ st.write("---")
 # --- Sidebar Configuration ---
 with st.sidebar:
     st.header("Gallery Settings")
-    n = st.slider("Complexity Order (n)", 1, 6, 3)
+    n = st.slider("Size 'n' (2^n )", 1, 6, 3)
     size = 2**n
     
     st.subheader("The Defect")
@@ -153,3 +153,4 @@ if start_btn:
     solve_recursive(main_board, 0, 0, m_row, m_col, size, board_ui, stat_ui, [0])
     st.snow()
     stat_ui.write("✨ **Harmony Restored.**")
+
