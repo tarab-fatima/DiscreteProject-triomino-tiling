@@ -16,7 +16,7 @@ st.markdown("""
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
         background-color: #FDF5E6 !important;
-        border-right: 1px solid #735240;
+        border-right: 2px ridge #735240;
     }
     
     /* Typography */
@@ -27,16 +27,16 @@ st.markdown("""
     
     /* Buttons */
     div.stButton > button {
-        background-color: #795548; color: #FDF5E6;
+        background-color: white; color: #FDF5E6;
         border-radius: 4px; border: none; height: 3em; width: 100%;
         transition: 0.3s;
     }
     div.stButton > button:hover {
-        background-color: #5D4037; color: white;
+        background-color: #FDF5E6; color: white;
     }
     
     /* Inputs */
-    .stNumberInput input { background-color: #FDF5E6 !important; }
+    .stNumberInput input { background-color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -153,5 +153,6 @@ if start_btn:
     solve_recursive(main_board, 0, 0, m_row, m_col, size, board_ui, stat_ui, [0])
     st.snow()
     stat_ui.write("✨ **Harmony Restored.**")
+
 
 
