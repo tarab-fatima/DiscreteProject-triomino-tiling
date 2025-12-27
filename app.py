@@ -3,90 +3,115 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-# --- Page Config ---
-st.set_page_config(page_title="Triomino Tiling Solver", layout="wide")
+# --- Page Config & Classy Styling ---
+st.set_page_config(page_title="Triomino Tiling Pro", layout="wide")
 
-st.title("🧩 Defective Checkerboard Tiling")
-st.write("Solving $2^n \\times 2^n$ boards using Recursive Induction.")
+# Custom CSS for a Beige/Minimalist Theme
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #F5F5DC; /* Soft Beige */
+    }
+    .stMarkdown, .stHeader {
+        color: #4b3621; /* Deep Earth Brown */
+    }
+    div.stButton > button {
+        background-color: #d2b48c; /* Tan */
+        color: white;
+        border-radius: 5px;
+        border: none;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+st.title("🗂️ Recursive Tiling Analysis")
+st.markdown("### *A Study in Discrete Geometry and Induction*")
 
 # --- Sidebar ---
 with st.sidebar:
-    st.header("Configuration")
-    n = st.slider("Select n (Size $2^n$)", 1, 6, 3)
+    st.header("Parameters")
+    n = st.slider("Board Order (n)", 1, 6, 3)
     size = 2**n
     
-    st.subheader("Missing Square")
-    m_row = st.number_input("Row (0 to size-1)", 0, size-1, 0)
-    m_col = st.number_input("Col (0 to size-1)", 0, size-1, 0)
+    st.subheader("Defect Position")
+    m_row = st.number_input("Row Index", 0, size-1, 0)
+    m_col = st.number_input("Col Index", 0, size-1, 0)
     
-    speed = st.select_slider("Speed", options=[0.5, 0.1, 0.05, 0.01, 0.0], value=0.1)
+    speed = st.select_slider("Animation Interval", options=[0.5, 0.1, 0.05, 0.01, 0.0], value=0.1)
     
-    start_btn = st.button("🚀 Start Tiling", use_container_width=True)
+    start_btn = st.button("Execute Algorithm", use_container_width=True)
 
-# --- The Core Algorithm ---
+# --- Helper: Classy Render ---
+def render_board(b, sz):
+    # Use a warm, professional color map
+    fig, ax = plt.subplots(figsize=(8, 8), facecolor='#F5F5DC')
+    
+    # We use 'copper' for a metallic/beige gradient
+    current_max = max(1, int(b.max()))
+    ax.imshow(b, cmap='copper', vmin=-1, vmax=current_max)
+    
+    # Minimalist border instead of grid
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_edgecolor('#4b3621')
+        spine.set_linewidth(2)
+        
+    fig.tight_layout()
+    return fig
+
+# --- Recursive Solver ---
 def solve_recursive(board, top, left, m_r, m_c, sz, plot_handle, status_handle, current_count):
     if sz == 1:
-        return current_count
+        return
     
     current_count[0] += 1
     count = current_count[0]
     half = sz // 2
     mid_r, mid_c = top + half, left + half
 
-    # Placement Logic
+    # Logic: Place center triomino
     if not (m_r < mid_r and m_c < mid_c): board[mid_r-1, mid_c-1] = count
     if not (m_r < mid_r and m_c >= mid_c): board[mid_r-1, mid_c] = count
     if not (m_r >= mid_r and m_c < mid_c): board[mid_r, mid_c-1] = count
     if not (m_r >= mid_r and m_c >= mid_c): board[mid_r, mid_c] = count
 
-    # Visual Update
-    fig, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(board, cmap='tab20b', vmin=-1, vmax=max(1, np.max(board)))
-    ax.set_xticks([]); ax.set_yticks([])
+    # Visual Refresh
+    fig = render_board(st.session_state.board, size)
     plot_handle.pyplot(fig)
-    plt.close(fig) # Prevent memory warning
+    plt.close(fig) 
     
-    status_handle.info(f"Placing Triomino #{count} (Grid size: {sz}x{sz})")
+    status_handle.caption(f"Iterating Step {count}...")
     if speed > 0: time.sleep(speed)
 
-    # Recursive Calls
-    # Top Left
-    solve_recursive(board, top, left, (m_r if (m_r < mid_r and m_c < mid_c) else mid_r-1), 
-                    (m_c if (m_r < mid_r and m_c < mid_c) else mid_c-1), half, plot_handle, status_handle, current_count)
-    # Top Right
-    solve_recursive(board, top, mid_c, (m_r if (m_r < mid_r and m_c >= mid_c) else mid_r-1), 
-                    (m_c if (m_r < mid_r and m_c >= mid_c) else mid_c), half, plot_handle, status_handle, current_count)
-    # Bottom Left
-    solve_recursive(board, mid_r, left, (m_r if (m_r >= mid_r and m_c < mid_c) else mid_r), 
-                    (m_c if (m_r >= mid_r and m_c < mid_c) else mid_c-1), half, plot_handle, status_handle, current_count)
-    # Bottom Right
-    solve_recursive(board, mid_r, mid_c, (m_r if (m_r >= mid_r and m_c >= mid_c) else mid_r), 
-                    (m_c if (m_r >= mid_r and m_c >= mid_c) else mid_c), half, plot_handle, status_handle, current_count)
+    # Quadrant Recursion
+    solve_recursive(board, top, left, (m_r if (m_r < mid_r and m_c < mid_c) else mid_r-1), (m_c if (m_r < mid_r and m_c < mid_c) else mid_c-1), half, plot_handle, status_handle, current_count)
+    solve_recursive(board, top, mid_c, (m_r if (m_r < mid_r and m_c >= mid_c) else mid_r-1), (m_c if (m_r < mid_r and m_c >= mid_c) else mid_c), half, plot_handle, status_handle, current_count)
+    solve_recursive(board, mid_r, left, (m_r if (m_r >= mid_r and m_c < mid_c) else mid_r), (m_c if (m_r >= mid_r and m_c < mid_c) else mid_c-1), half, plot_handle, status_handle, current_count)
+    solve_recursive(board, mid_r, mid_c, (m_r if (m_r >= mid_r and m_c >= mid_c) else mid_r), (m_c if (m_r >= mid_r and m_c >= mid_c) else mid_c), half, plot_handle, status_handle, current_count)
 
-# --- Main Layout ---
+# --- Layout ---
 col1, col2 = st.columns([2, 1])
+
 with col1:
-    board_display = st.empty()
-    # Create a fresh temporary board just for display
-    temp_board = np.zeros((size, size))
-    temp_board[m_row, m_col] = -1
-    fig, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(temp_board, cmap='binary', vmin=-1, vmax=0)
-    ax.set_xticks([]); ax.set_yticks([])
-    board_display.pyplot(fig)
-    plt.close(fig)
+    board_container = st.empty()
+    # Initialize session board for rendering
+    if 'board' not in st.session_state or st.session_state.board.shape[0] != size:
+        st.session_state.board = np.zeros((size, size))
+        st.session_state.board[m_row, m_col] = -1
+    
+    f = render_board(st.session_state.board, size)
+    board_container.pyplot(f)
+    plt.close(f)
 
 with col2:
-    status_display = st.empty()
-    status_display.write("Configure settings and press Start.")
+    st.info("The board is divided into four quadrants. One triomino is placed at the intersection to bridge the gaps, effectively creating one sub-problem per quadrant.")
+    stat_box = st.empty()
 
 if start_btn:
-    # 1. Start with a fresh board of the current size
-    final_board = np.zeros((size, size))
-    final_board[m_row, m_col] = -1
+    st.session_state.board = np.zeros((size, size))
+    st.session_state.board[m_row, m_col] = -1
     
-    # 2. Run the solver
-    solve_recursive(final_board, 0, 0, m_row, m_col, size, board_display, status_display, [0])
-    
-    st.balloons()
-    status_display.success("Tiling Completed Successfully!")
+    solve_recursive(st.session_state.board, 0, 0, m_row, m_col, size, board_container, stat_box, [0])
+    st.snow() # Elegant alternative to balloons
+    stat_box.success("Optimization Complete.")
